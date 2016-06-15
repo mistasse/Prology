@@ -136,6 +136,18 @@ class Variable:
         return self.name
 
 
+def rebind(predicate, i, toAvoid):
+    subst = {}
+    for v in predicate.vars[i]:
+        new = v
+        j = 0
+        while new in toAvoid:
+            new = Variable("{}_{}".format(v, j))
+            j += 1
+        subst[v] = new
+    return predicate.facts[i].eval(subst), [b.eval(subst) for b in predicate.bodies[i]], subst
+
+
 class Instance:
 
     def __init__(self, predicate, args):
@@ -153,19 +165,6 @@ class Instance:
                     yield from unbounds(arg)
         for arg in args:
             self.vars = {**self.vars, **dict(unbounds(arg))}
-
-    def rebind(self, env, newEnv=False):
-        subst = {}
-        for v in self.vars:
-            new = v
-            i = 0
-            while new in env:
-                new = Variable("{}_{}".format(v, i))
-                i += 1
-            subst[v] = new
-        if newEnv:
-            return self.eval(subst), subst
-        return self.eval(subst)
 
     def __repr__(self):
         if not self.args:
@@ -191,6 +190,7 @@ class Instance:
         return self.known_when()
 
     def known_when(self, *args):
+        self.predicate.vars.append(set(self.vars) | set(var for arg in args for var in arg.vars))
         self.predicate.facts.append(self)
         self.predicate.bodies.append(args)
         return self.predicate
@@ -218,29 +218,29 @@ class Instance:
         if toRename is None:
             toRename = set()
         toRename |= set(self.vars)
-        for i, fact in enumerate(self.predicate.facts):
-            fact, reboundFactVariables = fact.rebind(toRename, True)  # gets the fact and rebind it
+        for i in range(len(self.predicate.facts)):
+            fact, body, newVariables = rebind(self.predicate, i, toRename)  # gets the fact and rebinds it
             fsubst = unify(self, fact)  # try unifying with the fact
             if fsubst is None:
                 continue
 
-            if not self.predicate.bodies[i]:  # if no body, just yield the substitution
+            if not body:  # if no body, just yield the substitution
                 yield {k: v.eval(fsubst) for k, v in self.vars.items()}
                 continue
 
             stack = [(0, fsubst, None)]  # Otherwise, perform a DFS on the possible unifications with body
-            bodies = [body.eval(reboundFactVariables) for body in self.predicate.bodies[i]]
+            toAvoid = toRename | set(newVariables.values())
             while stack:
                 j, fsubst, gen = stack.pop()
                 if gen is None:
-                    gen = bodies[j].eval(fsubst).ask(toRename | set(reboundFactVariables.values()))
+                    gen = body[j].eval(fsubst).ask(toAvoid)
                 subst = next(gen, None)
                 if subst is None:
                     continue
                 stack.append((j, fsubst, gen))
 
                 fsubst = {**fsubst, **subst}  # unbounded overrided
-                if j == len(bodies)-1:  # yield if at the end of the body
+                if j == len(body)-1:  # yield if at the end of the body
                     yield {k: v.eval(fsubst) for k, v in self.vars.items()}
                 else:
                     stack.append((j+1, fsubst, None))  # if not at the end, go one step further
@@ -286,6 +286,7 @@ class Predicate:
 
     def __init__(self, name):
         self.name = name
+        self.vars = []
         self.facts = []
         self.bodies = []
 
