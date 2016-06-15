@@ -1,4 +1,5 @@
 from prology import *
+
 _ = L
 from unittest import main, TestCase
 
@@ -26,7 +27,7 @@ class Test(TestCase):
     def testAppend(self):
         append = Predicate("append")
         append(nil, _.L, _.L).known()
-        append(lst(_.H, _.T), _.L2, lst(_.H, _.L3)).known_when(
+        append(cons(_.H, _.T), _.L2, cons(_.H, _.L3)).known_when(
             append(_.T, _.L2, _.L3)
         )
         self.assertEqual(append(plist(1, 2, 3), plist(4, 5), _.Z).dfs(), append(plist(1, 2, 3), plist(4, 5), plist(1, 2, 3, 4, 5)))

@@ -298,10 +298,11 @@ class Predicate:
     def __eq__(self, other):
         return self is other
 
+
 def plist(*iterable):
     current = nil
     for item in iterable[::-1]:
-        current = lst(item, current)
+        current = cons(item, current)
     return current
 
 
@@ -317,7 +318,7 @@ def _not(A):
     raise Exception("Not only works with predicate instances. Got {}".format(A))
 
 
-lst = Predicate("list")
+cons = Predicate("cons")
 nil = Predicate("nil")()
 true = Predicate("true")()
 true.known()
