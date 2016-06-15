@@ -24,7 +24,9 @@ append(lst(_.H, _.T), _.L2, lst(_.H, _.L3)).known_when(
     append(_.T, _.L2, _.L3)
 )
 
-# Get the first matching instance
+# Append [1, 2, 3] and [4, 5, 6], prints the result in Z
+print(append(plist(1, 2, 3), plist(4, 5, 6), _.Z).dfs(_.Z))
+# Return first matching instance
 print(append(_.A, _.B, plist(1, 2, 3, 4, 5, 6, 7)).dfs())
 # Returns if it was possible to find an answer
 print(append(_.A, _.B, plist(1, 2, 3, 4, 5, 6, 7)).ever())
