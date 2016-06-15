@@ -1,3 +1,5 @@
+from .prology import *
+
 __all__ = [
     "L",
     "Predicate",
