@@ -6,6 +6,9 @@ from unittest import main, TestCase
 
 class Test(TestCase):
 
+    def testRebind(self):
+        pass
+
     def assertNotNone(self, x):
         print(x)
         super().assertIsNotNone(x)

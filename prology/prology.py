@@ -136,16 +136,13 @@ class Variable:
         return self.name
 
 
-def rebind(predicate, i, toAvoid):
+def rebind(predicate, i, takenVariables):
     subst = {}
     for v in predicate.vars[i]:
-        new = v
-        j = 0
-        while new in toAvoid:
-            new = Variable("{}_{}".format(v, j))
-            j += 1
+        takenVariables[v] += 1
+        new = Variable("{}${}".format(v, takenVariables[v]))
         subst[v] = new
-    return predicate.facts[i].eval(subst), [b.eval(subst) for b in predicate.bodies[i]], subst
+    return predicate.facts[i].eval(subst), [body.eval(subst) for body in predicate.bodies[i]]
 
 
 class Instance:
@@ -212,14 +209,13 @@ class Instance:
             return [r[var] for r in ret]
         return ret
 
-    def ask(self, toRename=None):
+    def ask(self, takenVars=None):
         """Yields a possible substitution, toRename contains the variable names
         already taken (since fsubst and subst coexist)"""
-        if toRename is None:
-            toRename = set()
-        toRename |= set(self.vars)
+        if takenVars is None:
+            takenVars = defaultdict(int)
         for i in range(len(self.predicate.facts)):
-            fact, body, newVariables = rebind(self.predicate, i, toRename)  # gets the fact and rebinds it
+            fact, body = rebind(self.predicate, i, takenVars)  # gets the fact and rebinds it
             fsubst = unify(self, fact)  # try unifying with the fact
             if fsubst is None:
                 continue
@@ -229,11 +225,10 @@ class Instance:
                 continue
 
             stack = [(0, fsubst, None)]  # Otherwise, perform a DFS on the possible unifications with body
-            toAvoid = toRename | set(newVariables.values())
             while stack:
                 j, fsubst, gen = stack.pop()
                 if gen is None:
-                    gen = body[j].eval(fsubst).ask(toAvoid)
+                    gen = body[j].eval(fsubst).ask(takenVars)
                 subst = next(gen, None)
                 if subst is None:
                     continue
@@ -248,27 +243,20 @@ class Instance:
 
 class PythonPredicate:
 
-    def __init__(self, fct, params=None):
+    def __init__(self, fct, vars=None):
         self.fct = fct
-        if params is None:
+        if vars is None:
             params = signature(fct).parameters
             self.vars = [Variable(name) for name in params]
-            self.mapping = {var: var for var in self.vars}
         else:
-            self.vars, self.mapping = params
+            self.vars = vars
 
     def eval(self, subst):
-        mapping = {}
-        for k, v in self.mapping.items():
-            if isinstance(v, (Variable, Instance)):
-                mapping[k] = v.eval(subst)
-            else:
-                mapping[k] = v
-        return PythonPredicate(self.fct, (self.vars, mapping))
+        return PythonPredicate(self.fct, [v.eval(subst) if isinstance(v, (Variable, Instance)) else v for v in self.vars])
 
-    def ask(self, toRename=None):
-        for answer in self.fct(*(v.eval(self.mapping) for v in self.vars)):
-            yield {self.mapping.get(k, k): v for k, v in answer.items()}
+    def ask(self, takenVars=None):
+        for answer in self.fct(*self.vars):
+            yield answer
 
 
 def PyPred(fct):
