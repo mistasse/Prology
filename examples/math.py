@@ -16,7 +16,7 @@ NotFive(_.A).known_when(
     SmallInteger(_.A), Not(Equal(_.A, 5))
 )
 # List all Integers (in the predicate extension) not equal to 5
-#print(NotFive(_.X).all())
+print(NotFive(_.X).all())
 
 
 # Now, we won't stop to the 10 first natural, but we'd better not make an exhaustive search!
@@ -31,7 +31,7 @@ def biginteger(A):
 
 Five = Predicate("Five")
 Five(_.A).known_when(BigInteger(_.A), Equal(_.A, 5))
-#print(Five(_.A).dfs())  # Not an exhaustive search, hopefully, the dfs is lazy and won't compute all the 2**32 alternatives!
+print(Five(_.A).dfs())  # Not an exhaustive search, hopefully, the dfs is lazy and won't compute all the 2**32 alternatives!
 
 Addition = Predicate("Addition")
 @PyPred(Addition(_.A, _.B, _.C))
@@ -47,10 +47,12 @@ def _add(A, B, C):
         if A+B == C:
             yield {}
 
+# Here, B will be forced to be a smallInteger
 SmallIntegerAddition = Predicate("smintegeraddition")
 SmallIntegerAddition(_.A, _.B, _.C).known_when(SmallInteger(_.A), SmallInteger(_.B), SmallInteger(_.C), Addition(_.A, _.B, _.C))
 print(SmallIntegerAddition(_.B, _.A, 5).all())
 
+# Here, no constraint on B, the addition predicate will be used to compute it => may not be a smallInteger
 SmallIntegerAddition = Predicate("smintegeraddition")
 SmallIntegerAddition(_.A, _.B, _.C).known_when(SmallInteger(_.A), SmallInteger(_.C), Addition(_.A, _.B, _.C))
 print(SmallIntegerAddition(_.B, _.A, 5).all())
