@@ -1,5 +1,6 @@
 from _prology import *
 _ = L
+l = plist
 
 Extends = Predicate("class")
 Extends("animal", "any").known()
@@ -31,15 +32,15 @@ Collection("list").known()
 Collection("set").known()
 
 Map = Predicate("map")
-Map(plist(plist("function", _.P, _.Rfun), plist(_.C, _.Q)), _.Rmap).known_when(
+Map(l("function", l(_.P), _.Rfun), l(_.C, _.Q), _.Rmap).known_when(
     InstanceOf(_.Q, _.P),
     Collection(_.C),
     Equal(_.Rmap, plist(_.C, _.Rfun))
 )
 
 # Would it work to map a function of vehicle on a list of birds?
-print(Map(plist(plist("function", "vehicle", "bird"), plist("list", "bird")), _.R).ever())
+print(Map(l("function", l("vehicle"), "bird"), l("list", "bird"), _.R).ever())
 # What is the return type of this map?
-print(Map(plist(plist("function", "vehicle", "bird"), plist("set", "car")), _.R).all())
+print(Map(l("function", l("vehicle"), "bird"), l("set", "car"), _.R).all())
 # What can be the return type of a map with unbound collection?
-print(Map(plist(plist("function", "vehicle", "bird"), plist(_.C, "car")), _.R).all())
+print(Map(l("function", l("vehicle"), "bird"), l(_.C, "car"), _.R).all())

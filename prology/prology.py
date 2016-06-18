@@ -195,13 +195,18 @@ class Instance:
     def ever(self):
         return next(self.ask(), None) is not None
 
-    def dfs(self, var=None):
+    def fill(self):
         subst = next(self.ask(), None)
         if subst is None:
             return None
-        if var:
-            return subst[var]
         return self.eval(subst)
+
+    @property
+    def first(self):
+        subst = next(self.ask(), None)
+        if subst is None:
+            return None
+        return subst
 
     def all(self, var=None):
         ret = list(self.ask())
@@ -304,7 +309,7 @@ Not = Predicate("not")
 def _not(A):
     if isinstance(A, Instance):
         return [] if A.ever() else [{}]
-    raise Exception("Not only works with predicate instances. Got {}".format(A))
+    raise Exception("'Not' only works with predicate instances. Got {}.".format(A))
 
 
 cons = Predicate("cons")

@@ -31,18 +31,18 @@ def biginteger(A):
 
 Five = Predicate("Five")
 Five(_.A).known_when(BigInteger(_.A), Equal(_.A, 5))
-print(Five(_.A).dfs())  # Not an exhaustive search, hopefully, the dfs is lazy and won't compute all the 2**32 alternatives!
+print(Five(_.A).first)  # Not an exhaustive search, hopefully, the dfs is lazy and won't compute all the 2**32 alternatives!
 
 Addition = Predicate("Addition")
 @PyPred(Addition(_.A, _.B, _.C))
 def _add(A, B, C):
     bound = tuple(0 if isinstance(v, Variable) else 1 for v in (A, B, C))
     if bound == (0, 1, 1):
-        yield {C: A+B}
+        yield {A: C-B}
     elif bound == (1, 0, 1):
         yield {B: C-A}
     elif bound == (1, 1, 0):
-        yield {C: B-A}
+        yield {C: B+A}
     elif bound == (1, 1, 1):
         if A+B == C:
             yield {}

@@ -19,11 +19,11 @@ class Test(TestCase):
         cross(_.x, nil).known()
         cross(nil, _.x).known()
         self.assertEqual(
-            cross(plist(_.a, _.a), plist(_.b, 1)).dfs(),
+            cross(plist(_.a, _.a), plist(_.b, 1)).fill(),
             cross(plist(1, 1), plist(1, 1))
             )
         self.assertEqual(
-            cross(plist(_.b, 1), plist(_.a, _.a)).dfs(),
+            cross(plist(_.b, 1), plist(_.a, _.a)).fill(),
             cross(plist(1, 1), plist(1, 1))
             )
 
@@ -33,7 +33,7 @@ class Test(TestCase):
         append(cons(_.H, _.T), _.L2, cons(_.H, _.L3)).known_when(
             append(_.T, _.L2, _.L3)
         )
-        self.assertEqual(append(plist(1, 2, 3), plist(4, 5), _.Z).dfs(), append(plist(1, 2, 3), plist(4, 5), plist(1, 2, 3, 4, 5)))
+        self.assertEqual(append(plist(1, 2, 3), plist(4, 5), _.Z).fill(), append(plist(1, 2, 3), plist(4, 5), plist(1, 2, 3, 4, 5)))
 
         self.assertEqual(append(_.X, plist(4, 5), plist(1, 2, 3, 4, 5)).all(), [{_.X: plist(1, 2, 3)}])
         answers = append(_.X, _.Y, plist(1, 2, 3, 4, 5)).all()
