@@ -31,16 +31,18 @@ Collection = Predicate("collection")
 Collection("list").known()
 Collection("set").known()
 
+function = Predicate("function")
+
 Map = Predicate("map")
-Map(l("function", l(_.P), _.Rfun), l(_.C, _.Q), _.Rmap).known_when(
+Map(function(l(_.P), _.Rfun), l(_.C, _.Q), _.Rmap).known_when(
     InstanceOf(_.Q, _.P),
     Collection(_.C),
     Equal(_.Rmap, plist(_.C, _.Rfun))
 )
 
 # Would it work to map a function of vehicle on a list of birds?
-print(Map(l("function", l("vehicle"), "bird"), l("list", "bird"), _.R).ever())
+print(Map(function(l("vehicle"), "bird"), l("list", "bird"), _.R).ever())
 # What is the return type of this map?
-print(Map(l("function", l("vehicle"), "bird"), l("set", "car"), _.R).all())
+print(Map(function(l("vehicle"), "bird"), l("set", "car"), _.R).all())
 # What can be the return type of a map with unbound collection?
-print(Map(l("function", l("vehicle"), "bird"), l(_.C, "car"), _.R).all())
+print(Map(function(l("vehicle"), "bird"), l(_.C, "car"), _.R).all())

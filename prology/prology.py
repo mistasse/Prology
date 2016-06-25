@@ -2,6 +2,7 @@ from collections import *
 from inspect import signature
 from operator import indexOf
 from contextlib import contextmanager
+from abc import ABCMeta, abstractmethod
 
 
 def instantiate(f):
@@ -101,6 +102,12 @@ class L:
     def __getattr__(self, name):
         return Variable(name)
 
+    def __getitem__(self, iterable):
+        if isinstance(iterable, tuple):
+            return plist(*iterable)
+        else:
+            return cons(iterable, nil)
+
 _ = L
 
 
@@ -113,16 +120,18 @@ class unbound:
 
 class Variable:
 
-    def __init__(self, name):
+    def __init__(self, name, number=0):
         self.name = name
+        self.number = number
+        self.hash = hash((self.name, self.number))
 
     def __hash__(self):
-        return hash(self.name)
+        return self.hash
 
     def __eq__(self, other):
         if not isinstance(other, Variable):
             return False
-        return self.name == other.name
+        return self.name == other.name and self.number == other.number
 
     def eval(self, subst):
         val = subst.get(self, self)
@@ -133,19 +142,68 @@ class Variable:
         return val
 
     def __repr__(self):
-        return self.name
+        if self.number == 0:
+            return self.name
+        return "{}#{}".format(self.name, self.number)
 
 
 def rebind(predicate, i, takenVariables):
     subst = {}
     for v in predicate.vars[i]:
-        takenVariables[v] += 1
-        new = Variable("{}${}".format(v, takenVariables[v]))
+        number = takenVariables[v] = takenVariables[v] + 1
+        new = Variable(v.name, number)
         subst[v] = new
     return predicate.facts[i].eval(subst), [body.eval(subst) for body in predicate.bodies[i]]
 
 
-class Instance:
+class Instance(metaclass=ABCMeta):
+
+    @property
+    @abstractmethod
+    def vars(self):
+        pass
+
+    @property
+    @abstractmethod
+    def args(self):
+        pass
+
+    @abstractmethod
+    def eval(self, subst):
+        pass
+
+    @abstractmethod
+    def ask(self, takenVars=None):
+        pass
+
+    @abstractmethod
+    def eval(self, subst):
+        pass
+
+    def ever(self):
+        return next(self.ask(), None) is not None
+
+    def fill(self):
+        subst = next(self.ask(), None)
+        if subst is None:
+            return None
+        return self.eval(subst)
+
+    @property
+    def first(self):
+        subst = next(self.ask(), None)
+        if subst is None:
+            return None
+        return subst
+
+    def all(self, var=None):
+        ret = list(self.ask())
+        if var:
+            return [r[var] for r in ret]
+        return ret
+
+
+class PyInstance(Instance):
 
     def __init__(self, predicate, args):
         self.predicate = predicate
@@ -181,7 +239,7 @@ class Instance:
             else:
                 newargs[i] = arg
 
-        return Instance(self.predicate, tuple(newargs))
+        return PyInstance(self.predicate, tuple(newargs))
 
     def known(self):
         return self.known_when()
@@ -192,27 +250,11 @@ class Instance:
         self.predicate.bodies.append(args)
         return self.predicate
 
-    def ever(self):
-        return next(self.ask(), None) is not None
+    def vars(self):
+        pass
 
-    def fill(self):
-        subst = next(self.ask(), None)
-        if subst is None:
-            return None
-        return self.eval(subst)
-
-    @property
-    def first(self):
-        subst = next(self.ask(), None)
-        if subst is None:
-            return None
-        return subst
-
-    def all(self, var=None):
-        ret = list(self.ask())
-        if var:
-            return [r[var] for r in ret]
-        return ret
+    def args(self):
+        pass
 
     def ask(self, takenVars=None):
         """Yields a possible substitution, toRename contains the variable names
@@ -284,7 +326,7 @@ class Predicate:
         self.bodies = []
 
     def __call__(self, *args):
-        return Instance(self, args)
+        return PyInstance(self, args)
 
     def __repr__(self):
         return self.name
@@ -313,6 +355,7 @@ def _not(A):
 
 
 cons = Predicate("cons")
+cons(_.A, _.B).known()
 nil = Predicate("nil")()
 true = Predicate("true")()
 true.known()
