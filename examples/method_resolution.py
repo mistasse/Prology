@@ -29,7 +29,7 @@ def _not_matching(A, B):
 
 extends = Predicate("extends")
 
-hasSuper = Predicate("ancestor")  # A is a superclass of B
+hasSuper = Predicate("hasSuper")  # A is a superclass of B
 hasSuper(_.A, _.B).known_when(extends(_.A, _.B))
 hasSuper(_.A, _.B).known_when(extends(_.A, _.T), hasSuper(_.T, _.B))
 
@@ -61,7 +61,6 @@ extends("mouse", "animal").known()
 extends("cat", generic("killer", _["mouse"])).known()  # Cat is a mouse killer
 
 print(instanceof("cat", _.B).all())
-
 print(instanceof("cat", generic("killer", _[_.B])).all())
 print(instanceof(generic("killer", _["mouse"]), generic("killer", _[_.B])).all())
 

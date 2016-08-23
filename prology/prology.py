@@ -4,6 +4,8 @@ from operator import indexOf
 from contextlib import contextmanager
 from abc import ABCMeta, abstractmethod
 
+__all__ = ["unify", "Predicate", "Variable", "PyPred", "Equal", "L", "cons", "plist", "nil", "true", "false"]
+
 
 def instantiate(f):
     return f()
@@ -97,20 +99,6 @@ def unify(this, that, env=None):
     return env
 
 
-@instantiate
-class L:
-    def __getattr__(self, name):
-        return Variable(name)
-
-    def __getitem__(self, iterable):
-        if isinstance(iterable, tuple):
-            return plist(*iterable)
-        else:
-            return cons(iterable, nil)
-
-_ = L
-
-
 _notfound = object()
 
 @instantiate
@@ -160,6 +148,11 @@ class Instance(metaclass=ABCMeta):
 
     @property
     @abstractmethod
+    def predicate(self):
+        pass
+
+    @property
+    @abstractmethod
     def vars(self):
         pass
 
@@ -202,8 +195,10 @@ class Instance(metaclass=ABCMeta):
             return [r[var] for r in ret]
         return ret
 
-
 class PyInstance(Instance):
+    predicate = None
+    vars = None
+    args = None
 
     def __init__(self, predicate, args):
         self.predicate = predicate
@@ -224,7 +219,7 @@ class PyInstance(Instance):
     def __repr__(self):
         if not self.args:
             return str(self.predicate)
-        return "{}({})".format(self.predicate, ", ".join(str(arg) for arg in self.args))
+        return "{}({})".format(self.predicate, ", ".join(repr(arg) for arg in self.args))
 
     def __eq__(self, other):
         if not isinstance(other, Instance):
@@ -249,12 +244,6 @@ class PyInstance(Instance):
         self.predicate.facts.append(self)
         self.predicate.bodies.append(args)
         return self.predicate
-
-    def vars(self):
-        pass
-
-    def args(self):
-        pass
 
     def ask(self, takenVars=None):
         """Yields a possible substitution, toRename contains the variable names
@@ -307,14 +296,14 @@ class PythonPredicate:
 
 
 def PyPred(fct):
-    if isinstance(fct, Instance):
+    if isinstance(fct, Instance):  # Use as decorator - register
         instance = fct
         def _(fct):
             instance.known_when(PythonPredicate(fct))
             return fct
         return _
     else:
-        return PythonPredicate(fct)
+        return PythonPredicate(fct)  # Use as wrapper for function
 
 
 class Predicate:
@@ -335,6 +324,20 @@ class Predicate:
         return self is other
 
 
+@instantiate
+class L:
+    def __getattr__(self, name):
+        return Variable(name)
+
+    def __getitem__(self, iterable):
+        if isinstance(iterable, tuple):
+            return plist(*iterable)
+        else:
+            return cons(iterable, nil)
+
+_ = L
+
+
 def plist(*iterable):
     current = nil
     for item in iterable[::-1]:
@@ -352,6 +355,13 @@ def _not(A):
     if isinstance(A, Instance):
         return [] if A.ever() else [{}]
     raise Exception("'Not' only works with predicate instances. Got {}.".format(A))
+
+
+IsFrom = Predicate("isfrom")
+@PyPred(IsFrom(_.A, _.T))
+def _isinstance(A, T):
+    if isinstance(A, Instance) and A.predicate == T:
+        yield {}
 
 
 cons = Predicate("cons")
