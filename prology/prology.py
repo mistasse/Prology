@@ -4,7 +4,7 @@ from operator import indexOf
 from contextlib import contextmanager
 from abc import ABCMeta, abstractmethod
 
-__all__ = ["unify", "Predicate", "Instance", "Variable", "PyPred", "Equal", "L", "cons", "peach", "plist", "switch", "nil", "true", "false"]
+__all__ = ["unify", "Predicate", "Instance", "Variable", "PyPred", "Equal", "IsFrom", "Not", "L", "cons", "peach", "plist", "switch", "nil", "true", "false"]
 
 
 def instantiate(f):
@@ -175,6 +175,9 @@ class Instance(metaclass=ABCMeta):
 
     def ever(self):
         return next(self.ask(), None) is not None
+
+    def never(self):
+        return next(self.ask(), None) is None
 
     def fill(self):
         subst = next(self.ask(), None)
@@ -377,7 +380,7 @@ Not = Predicate("not")
 @PyPred(Not(_.A))
 def _not(A):
     if isinstance(A, Instance):
-        if not A.ever():
+        if A.never():
             yield {}
         return
     raise Exception("'Not' only works with predicate instances. Got {}.".format(A))
@@ -391,8 +394,13 @@ def _isinstance(A, T):
 
 
 class _Presentator:
-    def __init__(self, subst):
+    def __init__(self, tomatch, subst):
+        self.tomatch = tomatch
         self.subst = subst
+
+    def __iter__(self):
+        if self.subst is not None:
+            yield self.tomatch
 
     def __ror__(self, left):
         if self.subst is None:
@@ -410,11 +418,11 @@ def switch(tomatch):
     def _(pattern):
         nonlocal skip
         if skip:
-            return _Presentator(None)
+            return _Presentator(tomatch, None)
         subst = unify(pattern, tomatch)
         if subst is not None:
             skip = True
-        return _Presentator(subst)
+        return _Presentator(tomatch, subst)
     def default():
         nonlocal skip
         if not skip:

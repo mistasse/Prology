@@ -5,8 +5,17 @@ from unittest import main, TestCase
 
 class Test(TestCase):
 
-    def testRebind(self):
-        pass
+    def testToString(self):
+        self.assertEqual(str(cons(_.A, _.B)), "cons(A, B)")
+        self.assertEqual(str(nil), "nil")
+
+    def testTruth(self):
+        self.assertEqual(true.first, {})
+        self.assertEqual(true.fill(), true)
+        self.assertEqual(true.fill(), true)
+        self.assertEqual(true.all(), [{}])
+        self.assertEqual(true.ever(), True)
+        self.assertEqual(false.ever(), False)
 
     def assertNotNone(self, x):
         print(x)
@@ -112,7 +121,33 @@ class Test(TestCase):
         else:
             assert False, "should have been in default"
 
+        case = switch(_[1, "2", _._3])
+        for l in case(_[_.A, _.B, _.C]):
+            self.assertEqual(l, _[1, "2", _._3])
+            break
+        else:
+            assert False, "should have matched"
 
+        case = switch(_[1, "2", _._3])
+        for [a, b] in [_.A, _.B] | case(_[_.A, _.B, _.C]):
+            self.assertEqual([a, b], [1, "2"])
+            break
+        else:
+            assert False, "should have matched"
+
+        case = switch(_[1, "2", _._3])
+        for (a, b) in (_.A, _.B) | case(_[_.A, _.B, _.C]):
+            self.assertEqual((a, b), (1, "2"))
+            break
+        else:
+            assert False, "should have matched"
+
+    def testPyPreds(self):
+        assert IsFrom(cons("a", nil), cons).ever()
+        assert Not(IsFrom(cons("a", nil), cons)).never()
+
+    def testPeach(self):
+        self.assertEqual(peach(_[1, 2, 3], lambda x: x*x), [1, 4, 9])
 
 
 if __name__ == "__main__":
