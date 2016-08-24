@@ -4,7 +4,7 @@ from operator import indexOf
 from contextlib import contextmanager
 from abc import ABCMeta, abstractmethod
 
-__all__ = ["unify", "Predicate", "Variable", "PyPred", "Equal", "L", "cons", "plist", "nil", "true", "false"]
+__all__ = ["unify", "Predicate", "Instance", "Variable", "PyPred", "Equal", "L", "cons", "peach", "plist", "nil", "true", "false"]
 
 
 def instantiate(f):
@@ -195,6 +195,21 @@ class Instance(metaclass=ABCMeta):
             return [r[var] for r in ret]
         return ret
 
+    def __getitem__(self, key):
+        try:
+            if isinstance(key, str):
+                return self.args[self.predicate.keys[key]]
+            return self.args[key]
+        except (KeyError, IndexError):
+            raise KeyError("Predicate {} has no item {}".format(self.predicate.name, key))
+
+    def __getattr__(self, key):
+        try:
+            return self.args[self.predicate.keys[key]]
+        except KeyError:
+            raise AttributeError("Predicate {} has no attribute {}".format(self.predicate.name, key))
+
+
 class PyInstance(Instance):
     predicate = None
     vars = None
@@ -308,11 +323,12 @@ def PyPred(fct):
 
 class Predicate:
 
-    def __init__(self, name):
+    def __init__(self, name, keys=None):
         self.name = name
         self.vars = []
         self.facts = []
         self.bodies = []
+        self.keys = {k: i for i, k in enumerate(keys.split(" ")) if k != ""} if keys is not None else None
 
     def __call__(self, *args):
         return PyInstance(self, args)
@@ -345,6 +361,14 @@ def plist(*iterable):
     return current
 
 
+def peach(plist, fct):
+    ret = []
+    while plist != nil:
+        ret.append(fct(plist.args[0]))
+        plist = plist.args[1]
+    return ret
+
+
 Equal = Predicate("equal")
 Equal(_.A, _.A).known()
 
@@ -353,7 +377,9 @@ Not = Predicate("not")
 @PyPred(Not(_.A))
 def _not(A):
     if isinstance(A, Instance):
-        return [] if A.ever() else [{}]
+        if not A.ever():
+            yield {}
+        return
     raise Exception("'Not' only works with predicate instances. Got {}.".format(A))
 
 
@@ -364,7 +390,7 @@ def _isinstance(A, T):
         yield {}
 
 
-cons = Predicate("cons")
+cons = Predicate("cons", "a b")
 cons(_.A, _.B).known()
 nil = Predicate("nil")()
 true = Predicate("true")()

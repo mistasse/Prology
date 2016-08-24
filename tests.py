@@ -1,5 +1,4 @@
 from prology import *
-
 _ = L
 from unittest import main, TestCase
 
@@ -44,6 +43,38 @@ class Test(TestCase):
         self.assertIn({_.X: plist(1, 2), _.Y: plist(3, 4, 5)}, answers)
         self.assertIn({_.X: plist(1), _.Y: plist(2, 3, 4, 5)}, answers)
         self.assertIn({_.X: plist(), _.Y: plist(1, 2, 3, 4, 5)}, answers)
+
+    def testDict(self):
+        a = cons(_.A, _.B)
+        self.assertEqual(a.a, _.A)
+        self.assertEqual(a.b, _.B)
+        self.assertEqual(a["a"], _.A)
+        self.assertEqual(a["b"], _.B)
+        self.assertEqual(a[0], _.A)
+        self.assertEqual(a[1], _.B)
+
+        try:
+            a["x"]
+            assert False
+        except KeyError as e:
+            assert True
+        try:
+            a[2]
+            assert False
+        except KeyError as e:
+            assert True
+        try:
+            print(a["x"])
+            assert False
+        except KeyError as e:
+            assert True
+
+
+        try:
+            print(a.x)
+            assert False
+        except AttributeError as e:
+            assert True
 
 
 if __name__ == "__main__":
