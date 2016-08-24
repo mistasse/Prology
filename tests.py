@@ -76,6 +76,44 @@ class Test(TestCase):
         except AttributeError as e:
             assert True
 
+    def testMatch(self):
+        case = switch(_["they", "see", "me", "rolling"])
+        ok = False
+        for a in _.A | case(_[_.A]):
+            assert False, "case should not have matched"
+        for x in case.default:
+            ok = True
+        assert ok, "flow should have passed through default"
+
+        case = switch(_["they", "see", "me", "rolling"])
+        for a in _.A |\
+            case(_[_.A, _.B, _.C, _.D]):
+            self.assertEqual(a, "they")
+            break
+        else:
+            assert False, "case should have matched"
+        for x in case.default:
+            assert False, "default should not have been called"
+
+        for a in _.A |\
+            case(_[_.A, _.B, _.C, _.D]):
+            assert False, "switch should have sought because of second use"
+
+        case.reset()
+        for a in _.A |\
+            case(_[_.A, _.B, _.C, _.D]):
+            break
+        else:
+            assert False, "should have been in"
+
+        case.reset()
+        for x in case.default:
+            break
+        else:
+            assert False, "should have been in default"
+
+
+
 
 if __name__ == "__main__":
     main()

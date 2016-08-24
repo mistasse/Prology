@@ -4,7 +4,7 @@ from operator import indexOf
 from contextlib import contextmanager
 from abc import ABCMeta, abstractmethod
 
-__all__ = ["unify", "Predicate", "Instance", "Variable", "PyPred", "Equal", "L", "cons", "peach", "plist", "nil", "true", "false"]
+__all__ = ["unify", "Predicate", "Instance", "Variable", "PyPred", "Equal", "L", "cons", "peach", "plist", "switch", "nil", "true", "false"]
 
 
 def instantiate(f):
@@ -388,6 +388,45 @@ IsFrom = Predicate("isfrom")
 def _isinstance(A, T):
     if isinstance(A, Instance) and A.predicate == T:
         yield {}
+
+
+class _Presentator:
+    def __init__(self, subst):
+        self.subst = subst
+
+    def __ror__(self, left):
+        if self.subst is None:
+            return
+        if isinstance(left, tuple):
+            yield tuple(self.subst[e] for e in left)
+        elif isinstance(left, list):
+            yield list(self.subst[e] for e in left)
+        else:
+            yield self.subst[left]
+
+
+def switch(tomatch):
+    skip = False
+    def _(pattern):
+        nonlocal skip
+        if skip:
+            return _Presentator(None)
+        subst = unify(pattern, tomatch)
+        if subst is not None:
+            skip = True
+        return _Presentator(subst)
+    def default():
+        nonlocal skip
+        if not skip:
+            skip = True
+            yield tomatch
+    def reset():
+        nonlocal skip
+        skip = False
+        _.default = default()
+    _.default = default()
+    _.reset = reset
+    return _
 
 
 cons = Predicate("cons", "a b")
