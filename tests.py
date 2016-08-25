@@ -5,9 +5,24 @@ from unittest import main, TestCase
 
 class Test(TestCase):
 
-    def testToString(self):
+    def testForCover(self):
         self.assertEqual(str(cons(_.A, _.B)), "cons(A, B)")
         self.assertEqual(str(nil), "nil")
+        self.assertEqual(str(_.A), "A")
+        self.assertEqual(str(Variable("A", 0)), "A")
+        self.assertEqual(str(Variable("A", 1)), "A#1")
+        self.assertNotEqual(_.A, "A")
+        self.assertNotEqual(cons(_.A), "cons(A)")
+
+    def testUnify(self):
+        assert unify(1, 1) == {}
+        pred = Predicate("pred")
+        assert unify(pred(_.A, _.B, _.A), pred(1, 2, _.B)) is None
+        self.assertEqual(unify(pred(_.A, _.B, _.A), pred(1, 1, _.B)), {_.A: 1, _.B: 1})
+        assert unify(pred(1, 2), pred(_.A, _.A)) is None
+        assert unify(pred(_.A, _.A), pred(1, 2)) is None
+        assert unify(pred(_.A, 2), pred(1, _.A)) is None
+        assert unify(pred(1, _.A), pred(_.A, 2)) is None
 
     def testTruth(self):
         self.assertEqual(true.first, {})
@@ -143,8 +158,20 @@ class Test(TestCase):
             assert False, "should have matched"
 
     def testPyPreds(self):
+        pred = Predicate("pred")
+        pred(1).known_when(true, false)
+        pred(2).known()
+        pred(3).known()
         assert IsFrom(cons("a", nil), cons).ever()
         assert Not(IsFrom(cons("a", nil), cons)).never()
+        assert Not(Not(IsFrom(cons("a", nil), cons))).ever()
+        assert Equal(cons(_.A, 4), cons(3, _.A)).never()
+        assert Equal(cons(_.A, 3), cons(3, _.A)).ever()
+        assert Equal(pred(_.A, 2, _.B), pred(1, _.B, _.A)).never()
+        assert pred(1).never()
+        self.assertEqual(pred(2).all(), [{}])
+        self.assertEqual(pred(_.A).all(_.A), [2, 3])
+        self.assertEqual(pred(1).fill(), None)
 
     def testPeach(self):
         self.assertEqual(peach(_[1, 2, 3], lambda x: x*x), [1, 4, 9])

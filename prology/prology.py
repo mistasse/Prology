@@ -41,12 +41,11 @@ def unify(this, that, env=None):
         links[this].add(that)
         links[that].add(this)
 
-    states = []
-    states.append((this, that))
+    states = [(this, that)]
     while states:
         (this, that) = states.pop()
-        if this == that:
-            continue
+        # if this == that: TODO: uncomment?
+        #    continue
 
         # Are those two instances?
         if isinstance(this, Instance) and isinstance(that, Instance):
@@ -101,11 +100,6 @@ def unify(this, that, env=None):
 
 _notfound = object()
 
-@instantiate
-class unbound:
-    def __repr__(self):
-        return "_"
-
 class Variable:
 
     def __init__(self, name, number=0):
@@ -130,7 +124,7 @@ class Variable:
         return val
 
     def __repr__(self):
-        if self.number == 0:
+        if self.number is 0:
             return self.name
         return "{}#{}".format(self.name, self.number)
 
@@ -188,8 +182,6 @@ class Instance(metaclass=ABCMeta):
     @property
     def first(self):
         subst = next(self.ask(), None)
-        if subst is None:
-            return None
         return subst
 
     def all(self, var=None):
