@@ -204,6 +204,8 @@ class Instance(metaclass=ABCMeta):
         except KeyError:
             raise AttributeError("Predicate {} has no attribute {}".format(self.predicate.name, key))
 
+    def __bool__(self):
+        return self.ever()
 
 class PyInstance(Instance):
     predicate = None
@@ -324,6 +326,17 @@ class Predicate:
         self.facts = []
         self.bodies = []
         self.keys = {k: i for i, k in enumerate(keys.split(" ")) if k != ""} if keys is not None else None
+
+    def __getitem__(self, params):
+        inst = self(*params) if isinstance(params, tuple) else self(params)
+        inst.known()
+
+    def __setitem__(self, params, conditions):
+        inst = self(*params) if isinstance(params, tuple) else self(params)
+        if isinstance(conditions, tuple):
+            inst.known_when(*conditions)
+        else:
+            inst.known_when(conditions)
 
     def __call__(self, *args):
         return PyInstance(self, args)

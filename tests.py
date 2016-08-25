@@ -26,8 +26,10 @@ class Test(TestCase):
 
     def testTruth(self):
         self.assertEqual(true.first, {})
+        self.assertEqual(false.first, None)
         self.assertEqual(true.fill(), true)
         self.assertEqual(true.fill(), true)
+        self.assertEqual(false.fill(), None)
         self.assertEqual(true.all(), [{}])
         self.assertEqual(true.ever(), True)
         self.assertEqual(false.ever(), False)
@@ -50,12 +52,13 @@ class Test(TestCase):
             cross(plist(1, 1), plist(1, 1))
             )
 
-    def testAppend(self):
-        append = Predicate("append")
-        append(nil, _.L, _.L).known()
-        append(cons(_.H, _.T), _.L2, cons(_.H, _.L3)).known_when(
-            append(_.T, _.L2, _.L3)
-        )
+    def testAppend(self, append=None):
+        if append is None:
+            append = Predicate("append")
+            append(nil, _.L, _.L).known()
+            append(cons(_.H, _.T), _.L2, cons(_.H, _.L3)).known_when(
+                append(_.T, _.L2, _.L3)
+            )
         self.assertEqual(append(plist(1, 2, 3), plist(4, 5), _.Z).fill(), append(plist(1, 2, 3), plist(4, 5), plist(1, 2, 3, 4, 5)))
 
         self.assertEqual(append(_.X, plist(4, 5), plist(1, 2, 3, 4, 5)).all(), [{_.X: plist(1, 2, 3)}])
@@ -174,7 +177,32 @@ class Test(TestCase):
         self.assertEqual(pred(1).fill(), None)
 
     def testPeach(self):
-        self.assertEqual(peach(_[1, 2, 3], lambda x: x*x), [1, 4, 9])
+        def square(x):
+            return x*x
+        self.assertEqual(peach(_[1, 2, 3], square), [1, 4, 9])
+        self.assertEqual(peach(nil, square), [])
+
+    def testSyntacticSugar(self):
+        pred = Predicate("pred")
+        pred["a"]
+        pred[_.A] = Equal(_.A, 3)
+        pred["a", "b"]
+        pred[_.A, _.B] = Equal(_.A, _.B)
+        pred[_.A, _.B] = Equal(_.A, 1), Equal(_.B, 2)
+        assert pred(_.A)
+        assert pred(3)
+        assert pred(_.A, _.B)
+        assert not pred(_.A, _.B, _.C)
+        assert pred(1, 2)
+        assert pred(true, true)
+        assert pred(false, false)
+
+        append = Predicate("append")  # Create a predicate
+        append[nil, _.L, _.L]
+        append[cons(_.H, _.T), _.L2, cons(_.H, _.L3)] = \
+            append(_.T, _.L2, _.L3)
+
+        self.testAppend(append)
 
 
 if __name__ == "__main__":
