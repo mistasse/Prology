@@ -4,7 +4,7 @@ from operator import indexOf
 from contextlib import contextmanager
 from abc import ABCMeta, abstractmethod
 
-__all__ = ["unify", "Predicate", "Instance", "Variable", "PyPred", "Equal", "IsFrom", "Not", "L", "cons", "peach", "plist", "switch", "nil", "true", "false"]
+__all__ = ["unify", "Predicate", "PredicateProxy", "Instance", "Variable", "PyPred", "Equal", "IsFrom", "Not", "L", "cons", "peach", "plist", "switch", "nil", "true", "false"]
 
 
 def instantiate(f):
@@ -15,9 +15,9 @@ def unify(this, that, env=None):
     if env is None:
         env = {}
     if isinstance(this, Instance):
-        env = {**this.vars, **env}
+        env = {**this._vars, **env}
     if isinstance(that, Instance):
-        env = {**that.vars, **env}
+        env = {**that._vars, **env}
     links = defaultdict(set)
 
     def bind(var, val):
@@ -49,9 +49,9 @@ def unify(this, that, env=None):
 
         # Are those two instances?
         if isinstance(this, Instance) and isinstance(that, Instance):
-            if this.predicate != that.predicate or len(this.args) != len(that.args):
+            if this.predicate != that.predicate or len(this._args) != len(that._args):
                 return None
-            for a, b in zip(this.args, that.args):
+            for a, b in zip(this._args, that._args):
                 push(a, b)
             continue
 
@@ -131,7 +131,7 @@ class Variable:
 
 def rebind(predicate, i, takenVariables):
     subst = {}
-    for v in predicate.vars[i]:
+    for v in predicate._vars[i]:
         number = takenVariables[v] = takenVariables[v] + 1
         new = Variable(v.name, number)
         subst[v] = new
@@ -147,20 +147,24 @@ class Instance(metaclass=ABCMeta):
 
     @property
     @abstractmethod
-    def vars(self):
+    def _vars(self):
+        """Yields an iterable of unbound variables used in the instance"""
         pass
 
     @property
     @abstractmethod
-    def args(self):
+    def _args(self):
+        """The tuple of arguments"""
         pass
 
     @abstractmethod
     def eval(self, subst):
+        """Apply create a new instance by substituting unbound variables"""
         pass
 
     @abstractmethod
     def ask(self, takenVars=None):
+        """Yields substitutions making the instance true."""
         pass
 
     @abstractmethod
@@ -193,14 +197,14 @@ class Instance(metaclass=ABCMeta):
     def __getitem__(self, key):
         try:
             if isinstance(key, str):
-                return self.args[self.predicate.keys[key]]
-            return self.args[key]
+                return self._args[self.predicate.keys[key]]
+            return self._args[key]
         except (KeyError, IndexError):
             raise KeyError("Predicate {} has no item {}".format(self.predicate.name, key))
 
     def __getattr__(self, key):
         try:
-            return self.args[self.predicate.keys[key]]
+            return self._args[self.predicate.keys[key]]
         except KeyError:
             raise AttributeError("Predicate {} has no attribute {}".format(self.predicate.name, key))
 
@@ -209,38 +213,38 @@ class Instance(metaclass=ABCMeta):
 
 class PyInstance(Instance):
     predicate = None
-    vars = None
-    args = None
+    _vars = None
+    _args = None
 
     def __init__(self, predicate, args):
         self.predicate = predicate
-        self.args = args
+        self._args = args
 
-        self.vars = {}
+        self._vars = {}
         def unbounds(item):
             if isinstance(item, Variable):
-                if item in self.vars:
+                if item in self._vars:
                     return
                 yield (item, item)
             if isinstance(item, Instance):
-                for arg in item.args:
+                for arg in item._args:
                     yield from unbounds(arg)
         for arg in args:
-            self.vars = {**self.vars, **dict(unbounds(arg))}
+            self._vars = {**self._vars, **dict(unbounds(arg))}
 
     def __repr__(self):
-        if not self.args:
+        if not self._args:
             return str(self.predicate)
-        return "{}({})".format(self.predicate, ", ".join(repr(arg) for arg in self.args))
+        return "{}({})".format(self.predicate, ", ".join(repr(arg) for arg in self._args))
 
     def __eq__(self, other):
         if not isinstance(other, Instance):
             return False
-        return self.predicate == other.predicate and self.args == other.args
+        return self.predicate == other.predicate and self._args == other._args
 
     def eval(self, subst):
-        newargs = [0]*len(self.args)
-        for i, arg in enumerate(self.args):
+        newargs = [0]*len(self._args)
+        for i, arg in enumerate(self._args):
             if isinstance(arg, (Variable, Instance)):
                 newargs[i] = arg.eval(subst)
             else:
@@ -252,7 +256,7 @@ class PyInstance(Instance):
         return self.known_when()
 
     def known_when(self, *args):
-        self.predicate.vars.append(set(self.vars) | set(var for arg in args for var in arg.vars))
+        self.predicate._vars.append(set(self._vars) | set(var for arg in args for var in arg._vars))
         self.predicate.facts.append(self)
         self.predicate.bodies.append(args)
         return self.predicate
@@ -269,7 +273,7 @@ class PyInstance(Instance):
                 continue
 
             if not body:  # if no body, just yield the substitution
-                yield {k: v.eval(fsubst) for k, v in self.vars.items()}
+                yield {k: v.eval(fsubst) for k, v in self._vars.items()}
                 continue
 
             stack = [(0, fsubst, None)]  # Otherwise, perform a DFS on the possible unifications with body
@@ -284,7 +288,7 @@ class PyInstance(Instance):
 
                 fsubst = {**fsubst, **subst}  # unbounded overrided
                 if j == len(body)-1:  # yield if at the end of the body
-                    yield {k: v.eval(fsubst) for k, v in self.vars.items()}
+                    yield {k: v.eval(fsubst) for k, v in self._vars.items()}
                 else:
                     stack.append((j+1, fsubst, None))  # if not at the end, go one step further
 
@@ -295,15 +299,15 @@ class PythonPredicate:
         self.fct = fct
         if vars is None:
             params = signature(fct).parameters
-            self.vars = [Variable(name) for name in params]
+            self._vars = [Variable(name) for name in params]
         else:
-            self.vars = vars
+            self._vars = vars
 
     def eval(self, subst):
-        return PythonPredicate(self.fct, [v.eval(subst) if isinstance(v, (Variable, Instance)) else v for v in self.vars])
+        return PythonPredicate(self.fct, [v.eval(subst) if isinstance(v, (Variable, Instance)) else v for v in self._vars])
 
     def ask(self, takenVars=None):
-        for answer in self.fct(*self.vars):
+        for answer in self.fct(*self._vars):
             yield answer
 
 
@@ -322,7 +326,7 @@ class Predicate:
 
     def __init__(self, name, keys=None):
         self.name = name
-        self.vars = []
+        self._vars = []
         self.facts = []
         self.bodies = []
         self.keys = {k: i for i, k in enumerate(keys.split(" ")) if k != ""} if keys is not None else None
@@ -348,8 +352,28 @@ class Predicate:
         return self is other
 
 
+class PredicateProxy:
+    def __init__(self, f):
+        self.f = f
+
+    def __call__(self, *args, **kwargs):
+        return self.f(*args, **kwargs)
+
+    def __getitem__(self, params):
+        inst = self.f(*params) if isinstance(params, tuple) else self.f(params)
+        inst.known()
+
+    def __setitem__(self, params, conditions):
+        inst = self.f(*params) if isinstance(params, tuple) else self.f(params)
+        if isinstance(conditions, tuple):
+            inst.known_when(*conditions)
+        else:
+            inst.known_when(conditions)
+
+
 @instantiate
 class L:
+    """Syntactic sugar for creating variables: _.V and prology lists: _[_.A, _.B]"""
     def __getattr__(self, name):
         return Variable(name)
 
@@ -363,6 +387,7 @@ _ = L
 
 
 def plist(*iterable):
+    """Creates a prology list from arguments"""
     current = nil
     for item in iterable[::-1]:
         current = cons(item, current)
@@ -370,10 +395,12 @@ def plist(*iterable):
 
 
 def peach(plist, fct):
+    """Applies fct on a prology list and returns the result in a python list
+    """
     ret = []
     while plist != nil:
-        ret.append(fct(plist.args[0]))
-        plist = plist.args[1]
+        ret.append(fct(plist._args[0]))
+        plist = plist._args[1]
     return ret
 
 
