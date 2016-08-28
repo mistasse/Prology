@@ -71,12 +71,12 @@ def unify(this, that, env=None):
             continue
 
         # Now, both are Variables
-        if env[this] is this:
-            if env[that] is that:
+        if env[this] == this:
+            if env[that] == that:
                 link(this, that)
             else:
                 bind(this, env[that])
-        elif env[that] is that:
+        elif env[that] == that:
             bind(that, env[this])
         else:
             # both have values
@@ -221,16 +221,11 @@ class PyInstance(Instance):
         self._args = args
 
         self._vars = {}
-        def unbounds(item):
-            if isinstance(item, Variable):
-                if item in self._vars:
-                    return
-                yield (item, item)
-            if isinstance(item, Instance):
-                for arg in item._args:
-                    yield from unbounds(arg)
         for arg in args:
-            self._vars = {**self._vars, **dict(unbounds(arg))}
+            if isinstance(arg, Variable):
+                self._vars[arg] = arg
+            elif isinstance(arg, Instance):
+                self._vars.update(arg._vars)
 
     def __repr__(self):
         if not self._args:
